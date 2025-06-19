@@ -2,10 +2,10 @@
   "name": "checklist-backend",
   "version": "1.0.0",
   "scripts": {
-    "start": "tsx index.ts",
-    "dev": "tsx watch index.ts",
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx db/migrate.ts"
+    "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
