@@ -25,9 +25,9 @@ router.get('/', async (req: AuthRequest, res) => {
     const limitNum = parseInt(limit as string);
     const offset = (pageNum - 1) * limitNum;
 
-    // Build query conditions
+    // Build query conditions - use dbUserId instead of dbUser.id
     const conditions = [
-      eq(checklistItems.userId, req.user!.dbUser!.id)
+      eq(checklistItems.userId, req.user!.dbUserId!)
     ];
 
     if (category) {
@@ -91,7 +91,7 @@ router.post('/', async (req: AuthRequest, res) => {
     const [newItem] = await db
       .insert(checklistItems)
       .values({
-        userId: req.user!.dbUser!.id,
+        userId: req.user!.dbUserId!,
         title,
         description,
         category,
@@ -122,7 +122,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
       .where(
         and(
           eq(checklistItems.id, id),
-          eq(checklistItems.userId, req.user!.dbUser!.id)
+          eq(checklistItems.userId, req.user!.dbUserId!)
         )
       )
       .returning();
@@ -148,7 +148,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       .where(
         and(
           eq(checklistItems.id, id),
-          eq(checklistItems.userId, req.user!.dbUser!.id)
+          eq(checklistItems.userId, req.user!.dbUserId!)
         )
       )
       .returning();

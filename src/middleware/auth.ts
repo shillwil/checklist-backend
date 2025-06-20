@@ -1,3 +1,4 @@
+// src/middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
 import { auth } from '../lib/firebase-admin';
 import { db } from '../db';
@@ -9,10 +10,7 @@ export interface AuthRequest extends Request {
     uid: string;
     email?: string;
     name?: string;
-    dbUser?: {
-      id: string;
-      [key: string]: any;
-    };
+    dbUserId?: string; // Changed from nested dbUser object to just the ID
   };
 }
 
@@ -39,13 +37,18 @@ export async function verifyFirebaseToken(
       .limit(1);
 
     if (!dbUser) {
-      return res.status(404).json({ error: 'User not found in database' });
+      // If user doesn't exist in DB, they need to sync first
+      return res.status(404).json({ 
+        error: 'User not found in database. Please complete registration.',
+        code: 'USER_NOT_SYNCED' 
+      });
     }
 
     req.user = {
       uid: decodedToken.uid,
       email: decodedToken.email,
-      name: dbUser.name
+      name: dbUser.name,
+      dbUserId: dbUser.id // Store just the ID, not the whole user object
     };
 
     next();
