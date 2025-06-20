@@ -1,7 +1,4 @@
-import { uuid, pgTable, varchar, boolean, timestamp, integer, pgSchema } from "drizzle-orm/pg-core";
-
-// Explicitly use the public schema
-const publicSchema = pgSchema("public");
+import { uuid, pgTable, varchar, boolean, timestamp, integer } from "drizzle-orm/pg-core";
 
 export const UserTable = pgTable("users", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
