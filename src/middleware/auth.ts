@@ -15,45 +15,75 @@ export interface AuthRequest extends Request {
 }
 
 export async function verifyFirebaseToken(
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
+	req: AuthRequest,
+	res: Response,
+	next: NextFunction
 ) {
-  const token = req.headers.authorization?.split('Bearer ')[1];
+	const token = req.headers.authorization?.split('Bearer ')[1];
 
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
+	if (!token) {
+		console.log('Auth middleware: No token provided');
+		return res.status(401).json({ error: 'No token provided' });
+	}
 
-  try {
-    // Verify the Firebase ID token
-    const decodedToken = await auth.verifyIdToken(token);
-    
-    // Get user from database
-    const [dbUser] = await db
-      .select()
-      .from(UserTable)
-      .where(eq(UserTable.firebase_uid, decodedToken.uid))
-      .limit(1);
+	try {
+		// Verify the Firebase ID token
+		console.log('Auth middleware: Verifying token...');
+		const decodedToken = await auth.verifyIdToken(token);
+		console.log('Auth middleware: Token verified for uid:', decodedToken.uid);
+		
+		// Get user from database
+		const [dbUser] = await db
+			.select()
+			.from(UserTable)
+			.where(eq(UserTable.firebase_uid, decodedToken.uid))
+			.limit(1);
 
-    if (!dbUser) {
-      // If user doesn't exist in DB, they need to sync first
-      return res.status(404).json({ 
-        error: 'User not found in database. Please complete registration.',
-        code: 'USER_NOT_SYNCED' 
-      });
-    }
+		if (!dbUser) {
+			console.log('Auth middleware: User not found in database for uid:', decodedToken.uid);
+			// Provide a more helpful error response
+			return res.status(404).json({ 
+				error: 'User not found in database. Please complete registration.',
+				code: 'USER_NOT_SYNCED',
+				uid: decodedToken.uid,
+				email: decodedToken.email
+			});
+		}
 
-    req.user = {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
-      name: dbUser.name,
-      dbUserId: dbUser.id // Store just the ID, not the whole user object
-    };
+		console.log('Auth middleware: User found:', dbUser.id);
+		
+		req.user = {
+			uid: decodedToken.uid,
+			email: decodedToken.email || dbUser.email,
+			name: dbUser.name,
+			dbUserId: dbUser.id
+		};
 
-    next();
-  } catch (error) {
-    console.error('Token verification error:', error);
-    return res.status(401).json({ error: 'Invalid token' });
-  }
+		next();
+	} catch (error: any) {
+		console.error('Auth middleware: Token verification error:', error);
+		
+		// Provide more specific error messages
+		if (error.code === 'auth/argument-error') {
+			return res.status(401).json({ 
+				error: 'Invalid token format',
+				code: 'INVALID_TOKEN_FORMAT'
+			});
+		} else if (error.code === 'auth/id-token-expired') {
+			return res.status(401).json({ 
+				error: 'Token expired',
+				code: 'TOKEN_EXPIRED'
+			});
+		} else if (error.code === 'auth/id-token-revoked') {
+			return res.status(401).json({ 
+				error: 'Token revoked',
+				code: 'TOKEN_REVOKED'
+			});
+		}
+		
+		return res.status(401).json({ 
+			error: 'Invalid token',
+			code: 'INVALID_TOKEN'
+		});
+	}
 }
