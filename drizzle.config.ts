@@ -10,7 +10,5 @@ export default defineConfig({
     url: process.env.DATABASE_URL!,
   },
   verbose: true,
-  strict: true,
-  tablesFilter: ["*"],
-  schemaFilter: ["public"]
+  strict: true
 });

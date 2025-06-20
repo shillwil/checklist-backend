@@ -32,7 +32,17 @@ export async function verifyFirebaseToken(
 		const decodedToken = await auth.verifyIdToken(token);
 		console.log('Auth middleware: Token verified for uid:', decodedToken.uid);
 		
-		// Get user from database
+		// For the sync endpoint, we don't need a database user yet
+		if (req.path === '/sync' && req.method === 'POST') {
+			req.user = {
+				uid: decodedToken.uid,
+				email: decodedToken.email,
+				name: decodedToken.name || decodedToken.email?.split('@')[0]
+			};
+			return next();
+		}
+		
+		// For all other endpoints, require a database user
 		const [dbUser] = await db
 			.select()
 			.from(UserTable)

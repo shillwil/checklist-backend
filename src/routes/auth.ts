@@ -2,37 +2,25 @@ import { Router } from 'express';
 import { db } from '../db';
 import { UserTable } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { AuthRequest } from '../middleware/auth';
 import { auth } from '../lib/firebase-admin';
+import { verifyFirebaseToken } from '../middleware/auth';
 
 const router = Router();
 
 // Sync user endpoint - called after Firebase sign up
-// This endpoint doesn't require the middleware since the user might not exist yet
-router.post('/sync', async (req, res) => {
+// This endpoint uses the middleware but has special handling to not require a DB user
+router.post('/sync', verifyFirebaseToken, async (req: AuthRequest, res) => {
   try {
-    const token = req.headers.authorization?.split('Bearer ')[1];
-    
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
+    const { uid, email } = req.body;
 
-    console.log('Auth sync: Verifying token...');
-
-    // Verify the token
-    let decodedToken;
-    try {
-      decodedToken = await auth.verifyIdToken(token);
-      console.log('Auth sync: Token verified for uid:', decodedToken.uid);
-    } catch (error) {
-      console.error('Auth sync: Token verification failed:', error);
-      return res.status(401).json({ error: 'Invalid token' });
-    }
+    console.log('Auth sync: Syncing user with uid:', uid);
 
     // Check if user already exists
     const [existingUser] = await db
       .select()
       .from(UserTable)
-      .where(eq(UserTable.firebase_uid, decodedToken.uid))
+      .where(eq(UserTable.firebase_uid, uid))
       .limit(1);
 
     if (existingUser) {
@@ -41,27 +29,26 @@ router.post('/sync', async (req, res) => {
     }
 
     // Extract user info from various sources
-    const email = decodedToken.email || req.body.email;
+    const userEmail = email || req.user!.email;
     const name = req.body.name ||
-      decodedToken.name ||
-      decodedToken.displayName ||
-      email?.split('@')[0] ||
+      req.user!.name ||
+      userEmail?.split('@')[0] ||
       'User';
 
-    if (!email) {
+    if (!userEmail) {
       console.error('Auth sync: No email provided');
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    console.log('Auth sync: Creating new user with email:', email);
+    console.log('Auth sync: Creating new user with email:', userEmail);
 
     // Create new user
     try {
       const [newUser] = await db
         .insert(UserTable)
         .values({
-          firebase_uid: decodedToken.uid,
-          email: email,
+          firebase_uid: uid,
+          email: userEmail,
           name: name
         })
         .returning();
@@ -77,7 +64,7 @@ router.post('/sync', async (req, res) => {
         const [user] = await db
           .select()
           .from(UserTable)
-          .where(eq(UserTable.firebase_uid, decodedToken.uid))
+          .where(eq(UserTable.firebase_uid, uid))
           .limit(1);
 
         if (user) {
@@ -97,28 +84,21 @@ router.post('/sync', async (req, res) => {
 });
 
 // Get current user endpoint
-router.get('/me', async (req, res) => {
+router.get('/me', verifyFirebaseToken, async (req: AuthRequest, res) => {
 	try {
-		const token = req.headers.authorization?.split('Bearer ')[1];
-		
-		if (!token) {
-			return res.status(401).json({ error: 'No token provided' });
-		}
-
-		const decodedToken = await auth.verifyIdToken(token);
-		
-		const [user] = await db
-			.select()
-			.from(UserTable)
-			.where(eq(UserTable.firebase_uid, decodedToken.uid))
-			.limit(1);
-
-		if (!user) {
+		// Since the middleware already fetches the user, we can use it directly
+		if (!req.user?.dbUserId) {
 			return res.status(404).json({ 
 				error: 'User not found',
 				code: 'USER_NOT_SYNCED' 
 			});
 		}
+
+		const [user] = await db
+			.select()
+			.from(UserTable)
+			.where(eq(UserTable.id, req.user!.dbUserId))
+			.limit(1);
 
 		res.json({ user });
 	} catch (error) {
