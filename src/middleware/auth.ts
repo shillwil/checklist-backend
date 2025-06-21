@@ -35,8 +35,12 @@ export async function verifyFirebaseToken(
 		console.log('Auth middleware: Token verified for uid:', decodedToken.uid);
 		
 		// For the sync endpoint, we don't need a database user yet
-		// Check both the path and originalUrl to handle different deployment scenarios
-		if ((req.path === '/sync' || req.originalUrl.endsWith('/sync')) && req.method === 'POST') {
+		// More robust path detection that works across different deployment environments
+		if ((req.path === '/sync' || 
+		     req.originalUrl === '/api/auth/sync' || 
+		     req.originalUrl.endsWith('/sync') || 
+		     req.originalUrl.includes('/auth/sync')) && 
+		    req.method === 'POST') {
 			console.log('Auth middleware: Sync endpoint detected, skipping DB user check');
 			req.user = {
 				uid: decodedToken.uid,
