@@ -6,7 +6,7 @@
     "dev": "tsx watch src/index.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "build": "npx tsc --noEmitOnError false || true"
+    "build": "npx tsc"
   },
   "dependencies": {
     "cors": "^2.8.5",

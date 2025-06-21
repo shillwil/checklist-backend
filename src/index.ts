@@ -14,7 +14,9 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+console.log('Registering auth routes at /api/auth');
 app.use('/api/auth', authRoutes);
+console.log('Registering checklist routes at /api/checklist');
 app.use('/api/checklist', checklistRoutes);
 
 // Health check
