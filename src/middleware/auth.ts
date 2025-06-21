@@ -45,7 +45,7 @@ export async function verifyFirebaseToken(
 			req.user = {
 				uid: decodedToken.uid,
 				email: decodedToken.email,
-				name: decodedToken.name || decodedToken.email?.split('@')[0]
+				name: decodedToken.email?.split('@')[0]
 			};
 			return next();
 		}
