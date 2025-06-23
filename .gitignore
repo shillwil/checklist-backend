@@ -1,4 +1,5 @@
 node_modules/
 .env
 wedding-checklist-auth-firebase-adminsdk-fbsvc-a6978381b2.json
+dist/
 
