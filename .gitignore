@@ -2,4 +2,8 @@ node_modules/
 .env
 wedding-checklist-auth-firebase-adminsdk-fbsvc-a6978381b2.json
 dist/
+wedding-checklist-staging-firebase-adminsdk-fbsvc-211bafa0ad.json
+.env.example
+logs/
+phase-2.md
 

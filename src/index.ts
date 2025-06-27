@@ -1,29 +1,37 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import config from './config';
+import logger from './lib/logger';
 import authRoutes from './routes/auth';
 import checklistRoutes from './routes/checklist';
 
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
+// Environment-aware CORS
+app.use(cors({
+  origin: config.cors.origins,
+  credentials: true,
+}));
+
 app.use(express.json());
 
-// Routes
-console.log('Registering auth routes at /api/auth');
-app.use('/api/auth', authRoutes);
-console.log('Registering checklist routes at /api/checklist');
-app.use('/api/checklist', checklistRoutes);
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+// Enhanced health check
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    environment: config.nodeEnv,
+    timestamp: new Date().toISOString(),
+    firebase_project: config.firebase.projectId,
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Routes
+logger.info('Registering auth routes at /api/auth');
+app.use('/api/auth', authRoutes);
+logger.info('Registering checklist routes at /api/checklist');
+app.use('/api/checklist', checklistRoutes);
+
+app.listen(config.port, () => {
+  logger.info(`🚀 Server running on port ${config.port} (${config.nodeEnv})`);
+  logger.info(`🔥 Firebase project: ${config.firebase.projectId}`);
 });
